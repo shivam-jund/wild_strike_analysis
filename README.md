@@ -39,18 +39,21 @@ git lfs pull
 wild_strike_analysis/
 ├── README.md
 ├── requirements.txt
-├── .gitignore                    (existing)
-├── .gitattributes                (existing — routes *.csv/*.xlsx/*.zip through Git LFS)
+├── .gitignore                      (existing)
+├── .gitattributes                  (existing — routes *.csv/*.xlsx/*.zip through Git LFS)
 ├── data/
-│   └── procured/
-│       └── Public.csv            # FAA National Wildlife Strike Database extract (LFS)
+│   ├── procured/
+│   │   └── Public.csv              # FAA National Wildlife Strike Database extract (LFS), raw, untouched
+│   └── processed/
+│       └── strikes_clean.parquet   # cleaned dataset (session 2 output)
 └── notebooks/
-    └── 01_data_profiling.ipynb   # session 1: structural profile, grain audit,
-                                   # missingness over time, outlier pass
+    ├── 01_data_profiling.ipynb     # session 1: structural profile, grain audit,
+    │                                # missingness over time, outlier pass
+    └── 02_data_cleaning.ipynb      # session 2: documented fixes -> data/processed/strikes_clean.parquet
 ```
 
-`src/`, `data/processed/`, a `sql/` folder, and a `reports/` folder are deliberately not created yet —
-each will be added in the session it's first needed rather than scaffolded empty up front.
+`src/`, a `sql/` folder, and a `reports/` folder are deliberately not created yet — each will be added in
+the session it's first needed rather than scaffolded empty up front.
 
 ## Setup
 
@@ -70,5 +73,13 @@ column rather than real duplicate reports or genuine multi-strike flights; which
 safe to use for a 1990–2025 trend, and why; and a short, specific list of outlier rows in `SPEED`,
 `HEIGHT`, and `COST_REPAIRS`.
 
-**Next (session 2):** EDA proper — temporal patterns (respecting the reporting-volume confound),
-species/size/damage distributions, phase-of-flight and altitude patterns, geographic concentration.
+**Session 2 (data cleaning) — complete.** `notebooks/02_data_cleaning.ipynb` applies six documented fixes
+built on session 1's evidence (missing-means-zero fills, dropping the unused `TRANSFER` column, recoding
+`DAMAGE_LEVEL`'s blank to an explicit `"Unknown"`, ordered categoricals for `NUM_SEEN`/`NUM_STRUCK`, one
+evidenced `SPEED` correction, and resolving all 15 corrupted `LATITUDE`/`LONGITUDE` values), and writes
+the result to `data/processed/strikes_clean.parquet`. Three flagged issues are explicitly left alone with
+stated reasons rather than fixed. The raw CSV is never modified.
+
+**Next (session 3 / week 2):** EDA proper, reading from the cleaned parquet file — temporal patterns
+(respecting the reporting-volume confound), species/size/damage distributions, phase-of-flight and
+altitude patterns, geographic concentration.
