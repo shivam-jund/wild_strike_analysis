@@ -45,11 +45,11 @@ wild_strike_analysis/
 │   ├── procured/
 │   │   └── Public.csv              # FAA National Wildlife Strike Database extract (LFS), raw, untouched
 │   └── processed/
-│       └── strikes_clean.parquet   # cleaned dataset (session 2 output)
+│       └── strikes_clean.parquet   # cleaned dataset -- not yet created, see Progress below
 └── notebooks/
-    ├── 01_data_profiling.ipynb     # session 1: structural profile, grain audit,
-    │                                # missingness over time, outlier pass
-    └── 02_data_cleaning.ipynb      # session 2: documented fixes -> data/processed/strikes_clean.parquet
+    ├── 01_data_profiling.ipynb     # session 1: structural profile, grain audit, missingness over
+    │                                # time (corrected in session 3), outlier pass
+    └── 02_data_cleaning.ipynb      # sessions 2-3: documented fixes -> data/processed/strikes_clean.parquet
 ```
 
 `src/`, a `sql/` folder, and a `reports/` folder are deliberately not created yet — each will be added in
@@ -66,20 +66,34 @@ jupyter notebook
 
 ## Progress
 
-**Session 1 (data profiling) — complete.** `notebooks/01_data_profiling.ipynb` establishes: `INDEX_NR` is
-safe to treat as one-row-per-report; the large apparent duplication under
+**Session 1 (data profiling) — complete, with one correction.** `notebooks/01_data_profiling.ipynb`
+establishes: `INDEX_NR` is safe to treat as one-row-per-report; the large apparent duplication under
 `(INCIDENT_DATE, AIRPORT_ID, OPERATOR, FLT)` is mostly a side effect of grouping on a mostly-blank `FLT`
-column rather than real duplicate reports or genuine multi-strike flights; which fields are and aren't
-safe to use for a 1990–2025 trend, and why; and a short, specific list of outlier rows in `SPEED`,
-`HEIGHT`, and `COST_REPAIRS`.
+column rather than real duplicate reports or genuine multi-strike flights; and a short, specific list of
+outlier rows in `SPEED`, `HEIGHT`, and `COST_REPAIRS`. **Its original conclusion about `TIME`'s
+reliability was wrong** — `.notna()` counted 31,298 whitespace-only `TIME` values as "filled." The
+corrected picture (session 3): `TIME` is genuinely reliable only for 2020–2023, and collapses again to
+~55–59% for 2024–2026, concentrated almost entirely in one reporting source (`FAA Form 5200-7-E`), with no
+usable `TIME_OF_DAY` fallback for those rows. See the correction section in the notebook for the full
+before/after.
 
-**Session 2 (data cleaning) — complete.** `notebooks/02_data_cleaning.ipynb` applies six documented fixes
-built on session 1's evidence (missing-means-zero fills, dropping the unused `TRANSFER` column, recoding
-`DAMAGE_LEVEL`'s blank to an explicit `"Unknown"`, ordered categoricals for `NUM_SEEN`/`NUM_STRUCK`, one
-evidenced `SPEED` correction, and resolving all 15 corrupted `LATITUDE`/`LONGITUDE` values), and writes
-the result to `data/processed/strikes_clean.parquet`. Three flagged issues are explicitly left alone with
-stated reasons rather than fixed. The raw CSV is never modified.
+**Session 2 (data cleaning) — logic complete and verified; output file not yet written.**
+`notebooks/02_data_cleaning.ipynb` applies seven documented fixes (whitespace-only strings normalized to
+null across every string column, added session 3; plus six from session 2 — missing-means-zero fills,
+dropping the unused `TRANSFER` column, recoding `DAMAGE_LEVEL`'s blank to an explicit `"Unknown"`, ordered
+categoricals for `NUM_SEEN`/`NUM_STRUCK`, one evidenced `SPEED` correction, and resolving all 15 corrupted
+`LATITUDE`/`LONGITUDE` values). Three flagged issues are explicitly left alone with stated reasons. The
+raw CSV is never modified. **`data/processed/strikes_clean.parquet` does not exist yet** — the notebook's
+`to_parquet` and round-trip-check cells are correct but unexecuted, because the sandbox that built this
+notebook has no `pyarrow` and no network access to install it. Running those two cells once, locally,
+with `pip install -r requirements.txt` (which includes `pyarrow`), is the one step outside that sandbox
+this project still needs.
 
-**Next (session 3 / week 2):** EDA proper, reading from the cleaned parquet file — temporal patterns
-(respecting the reporting-volume confound), species/size/damage distributions, phase-of-flight and
-altitude patterns, geographic concentration.
+**Session 3 (correction pass) — complete.** Closed out session 2's four open review items (the pin above,
+a false claim in the `LATITUDE` reasoning, a validation check that couldn't fail, the still-pending
+parquet write) and traced + fixed the `TIME` measurement error described above, including a cause
+investigation (concentrated in one source, an abrupt one-year break, not a gradual drift).
+
+**Next (session 4):** temporal EDA on the corrected basis — seasonality and time-of-day (using the
+2020–2023 `TIME` window, now that "reliable from 2019 on" is known not to hold) — once
+`strikes_clean.parquet` exists for real.
