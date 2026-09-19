@@ -89,11 +89,22 @@ notebook has no `pyarrow` and no network access to install it. Running those two
 with `pip install -r requirements.txt` (which includes `pyarrow`), is the one step outside that sandbox
 this project still needs.
 
-**Session 3 (correction pass) — complete.** Closed out session 2's four open review items (the pin above,
-a false claim in the `LATITUDE` reasoning, a validation check that couldn't fail, the still-pending
-parquet write) and traced + fixed the `TIME` measurement error described above, including a cause
-investigation (concentrated in one source, an abrupt one-year break, not a gradual drift).
+**Session 3 (correction pass) — complete.** Fixed 3 of session 2's 4 open review items (the pandas pin,
+a false claim in the `LATITUDE` reasoning, a validation check that couldn't fail) and re-confirmed the
+parquet write is still blocked — same cause as session 2. Also traced and fixed the `TIME` measurement
+error described above, including a cause investigation (concentrated in one source, an abrupt one-year
+break, not a gradual drift).
 
-**Next (session 4):** temporal EDA on the corrected basis — seasonality and time-of-day (using the
-2020–2023 `TIME` window, now that "reliable from 2019 on" is known not to hold) — once
-`strikes_clean.parquet` exists for real.
+**Session 4 (parquet resolution) — attempted, still blocked.** This session's only job was to get
+`data/processed/strikes_clean.parquet` to actually exist. It doesn't yet: the sandbox producing these
+notebooks still has no `pyarrow`, no `fastparquet`, and no network access to install either — confirmed a
+third time, and independently confirmed by the session 3 review hitting the identical wall in its own,
+separate environment. Two small documentation fixes did land this session (this paragraph's wording, and
+a one-year-off boundary in notebook 01's corrected `TIME` summary). **The remaining step needs a real
+local Python environment with network access** — `pip install -r requirements.txt`, then run
+`02_data_cleaning.ipynb` top to bottom and confirm cells 26–27 execute — since no environment available to
+produce these notebooks so far has had one.
+
+**Next (session 5):** once `strikes_clean.parquet` exists for real, temporal EDA on the corrected basis —
+seasonality and time-of-day, using the 2020–2023 `TIME` window now that "reliable from 2019 on" is known
+not to hold.
