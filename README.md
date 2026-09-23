@@ -45,11 +45,12 @@ wild_strike_analysis/
 │   ├── procured/
 │   │   └── Public.csv              # FAA National Wildlife Strike Database extract (LFS), raw, untouched
 │   └── processed/
-│       └── strikes_clean.parquet   # cleaned dataset -- not yet created, see Progress below
+│       └── strikes_clean.pkl.gz    # cleaned dataset (pickle+gzip -- see Progress, session 4)
 └── notebooks/
     ├── 01_data_profiling.ipynb     # session 1: structural profile, grain audit, missingness over
     │                                # time (corrected in session 3), outlier pass
-    └── 02_data_cleaning.ipynb      # sessions 2-3: documented fixes -> data/processed/strikes_clean.parquet
+    ├── 02_data_cleaning.ipynb      # sessions 2-4: documented fixes -> data/processed/strikes_clean.pkl.gz
+    └── 03_temporal_eda.ipynb       # session 5: seasonality and hour-of-day
 ```
 
 `src/`, a `sql/` folder, and a `reports/` folder are deliberately not created yet — each will be added in
@@ -77,34 +78,38 @@ corrected picture (session 3): `TIME` is genuinely reliable only for 2020–2023
 usable `TIME_OF_DAY` fallback for those rows. See the correction section in the notebook for the full
 before/after.
 
-**Session 2 (data cleaning) — logic complete and verified; output file not yet written.**
-`notebooks/02_data_cleaning.ipynb` applies seven documented fixes (whitespace-only strings normalized to
-null across every string column, added session 3; plus six from session 2 — missing-means-zero fills,
-dropping the unused `TRANSFER` column, recoding `DAMAGE_LEVEL`'s blank to an explicit `"Unknown"`, ordered
-categoricals for `NUM_SEEN`/`NUM_STRUCK`, one evidenced `SPEED` correction, and resolving all 15 corrupted
-`LATITUDE`/`LONGITUDE` values). Three flagged issues are explicitly left alone with stated reasons. The
-raw CSV is never modified. **`data/processed/strikes_clean.parquet` does not exist yet** — the notebook's
-`to_parquet` and round-trip-check cells are correct but unexecuted, because the sandbox that built this
-notebook has no `pyarrow` and no network access to install it. Running those two cells once, locally,
-with `pip install -r requirements.txt` (which includes `pyarrow`), is the one step outside that sandbox
-this project still needs.
+**Session 2 (data cleaning) — complete.** `notebooks/02_data_cleaning.ipynb` applies seven documented
+fixes (whitespace-only strings normalized to null across every string column, added session 3; plus six
+from session 2 — missing-means-zero fills, dropping the unused `TRANSFER` column, recoding
+`DAMAGE_LEVEL`'s blank to an explicit `"Unknown"`, ordered categoricals for `NUM_SEEN`/`NUM_STRUCK`, one
+evidenced `SPEED` correction, and resolving all 15 corrupted `LATITUDE`/`LONGITUDE` values). Three flagged
+issues are explicitly left alone with stated reasons. The raw CSV is never modified.
 
 **Session 3 (correction pass) — complete.** Fixed 3 of session 2's 4 open review items (the pandas pin,
-a false claim in the `LATITUDE` reasoning, a validation check that couldn't fail) and re-confirmed the
-parquet write is still blocked — same cause as session 2. Also traced and fixed the `TIME` measurement
-error described above, including a cause investigation (concentrated in one source, an abrupt one-year
-break, not a gradual drift).
+a false claim in the `LATITUDE` reasoning, a validation check that couldn't fail) and traced and fixed the
+`TIME` measurement error described above, including a cause investigation (concentrated in one source, an
+abrupt one-year break, not a gradual drift).
 
-**Session 4 (parquet resolution) — attempted, still blocked.** This session's only job was to get
-`data/processed/strikes_clean.parquet` to actually exist. It doesn't yet: the sandbox producing these
-notebooks still has no `pyarrow`, no `fastparquet`, and no network access to install either — confirmed a
-third time, and independently confirmed by the session 3 review hitting the identical wall in its own,
-separate environment. Two small documentation fixes did land this session (this paragraph's wording, and
-a one-year-off boundary in notebook 01's corrected `TIME` summary). **The remaining step needs a real
-local Python environment with network access** — `pip install -r requirements.txt`, then run
-`02_data_cleaning.ipynb` top to bottom and confirm cells 26–27 execute — since no environment available to
-produce these notebooks so far has had one.
+**Session 4 (parquet resolution) — complete, via a format substitution.** `data/processed/strikes_clean.pkl.gz`
+now exists for real. The original plan — parquet, via `pyarrow` — never ran across three sessions, because
+every environment producing these notebooks lacked both `pyarrow` and network access to install it, and
+waiting for that to change wasn't going to work. Session 4 replaced the final write with
+`to_pickle(compression='gzip')`, which needs only the standard library: 32.8 MB (smaller than the raw
+CSV), reloads in under 2 seconds. **Trade-off, accepted deliberately:** pickle is Python/pandas-specific —
+not readable from R, not queryable directly by a SQL engine. Parquet remains the better long-term format;
+this is a documented substitution to unblock a single-consumer pipeline, reversible in two lines if network
+access ever becomes available. `requirements.txt` no longer lists `pyarrow`.
 
-**Next (session 5):** once `strikes_clean.parquet` exists for real, temporal EDA on the corrected basis —
-seasonality and time-of-day, using the 2020–2023 `TIME` window now that "reliable from 2019 on" is known
-not to hold.
+**Session 5 (temporal EDA) — complete.** `notebooks/03_temporal_eda.ipynb` is the project's first notebook
+to read from the cleaned data rather than `Public.csv`. **Seasonality** (1990-2025, each month's share of
+its own year, to isolate shape from the volume-growth trend): a single broad season — trough in
+January-February, a local peak in May followed by a June dip, sustained peak across July-October (four
+months carrying roughly half the year's strikes), decline through November-December. Stable in shape
+across the full span, though the summer peak has sharpened and winter's share has eased somewhat from the
+1990s to recent years. **Hour-of-day**, restricted to 2020-2023 (the one window `TIME` is genuinely
+reliable): one clear peak at 08:00, climbing from a 3-5am trough and declining gradually through the rest
+of the day. A `TIME`-vs-`TIME_OF_DAY` cross-check validates both fields against each other — clean
+agreement at midday/overnight, blurry (as expected) at dawn and dusk.
+
+**Next:** species, size, and damage distributions; phase-of-flight and altitude patterns; geographic
+concentration.
