@@ -47,10 +47,11 @@ wild_strike_analysis/
 │   └── processed/
 │       └── strikes_clean.pkl.gz    # cleaned dataset (pickle+gzip -- see Progress, session 4)
 └── notebooks/
-    ├── 01_data_profiling.ipynb     # session 1: structural profile, grain audit, missingness over
-    │                                # time (corrected in session 3), outlier pass
-    ├── 02_data_cleaning.ipynb      # sessions 2-4: documented fixes -> data/processed/strikes_clean.pkl.gz
-    └── 03_temporal_eda.ipynb       # session 5: seasonality and hour-of-day
+    ├── 01_data_profiling.ipynb        # session 1: structural profile, grain audit, missingness over
+    │                                   # time (corrected in session 3), outlier pass
+    ├── 02_data_cleaning.ipynb         # sessions 2-4: documented fixes -> data/processed/strikes_clean.pkl.gz
+    ├── 03_temporal_eda.ipynb          # session 5: seasonality and hour-of-day
+    └── 04_species_damage_eda.ipynb    # session 6: SPECIES categorization, size vs. damage, severity ranking
 ```
 
 `src/`, a `sql/` folder, and a `reports/` folder are deliberately not created yet — each will be added in
@@ -107,9 +108,20 @@ January-February, a local peak in May followed by a June dip, sustained peak acr
 months carrying roughly half the year's strikes), decline through November-December. Stable in shape
 across the full span, though the summer peak has sharpened and winter's share has eased somewhat from the
 1990s to recent years. **Hour-of-day**, restricted to 2020-2023 (the one window `TIME` is genuinely
-reliable): one clear peak at 08:00, climbing from a 3-5am trough and declining gradually through the rest
-of the day. A `TIME`-vs-`TIME_OF_DAY` cross-check validates both fields against each other — clean
-agreement at midday/overnight, blurry (as expected) at dawn and dusk.
+reliable): one clear peak at 08:00 (9.46%), climbing from a pre-dawn trough at hours 2-4 and declining
+gradually through the rest of the day. A `TIME`-vs-`TIME_OF_DAY` cross-check validates both fields against
+each other — clean agreement at midday/overnight, blurry (as expected) at dawn and dusk.
 
-**Next:** species, size, and damage distributions; phase-of-flight and altitude patterns; geographic
-concentration.
+**Session 6 (species and damage) — complete.** `notebooks/04_species_damage_eda.ipynb` first builds a
+4-bucket `SPECIES` categorization (species-identified 48.3%, unidentified 39.6%, genus/group-level 7.8%,
+non-avian 4.2%) via keyword and pattern heuristics checked against the actual data, with a small,
+quantified residual left honestly uncategorized rather than forced. Identification quality has mostly
+*improved* over time (unlike most other fields in this dataset) after a specific 1999-2005 worsening.
+**Size strongly predicts damage severity:** 3.4% (small) -> 16.6% (medium) -> 47.7% (large) damage rate. A
+species-level severity ranking (species-identified only, n>=30 strikes to avoid the single-strike
+"100%-damage-rate" trap) independently confirms this — large waterfowl and raptors (loons, geese,
+vultures, pelicans) dominate the top of the list. Non-avian wildlife concentrates heavily in ground-ops
+phases (62.0% vs. 34.5% for birds).
+
+**Next:** geographic concentration — airport- and state-level patterns, applying the same raw-count-vs-rate
+discipline used throughout this project for time and species.
