@@ -20,8 +20,8 @@ pilots, airlines, and airport staff since 1990.
 FAA's own estimate is that fewer than 40% of strikes are reported in a given year. Reporting completeness
 also varies by airport and operator, and has changed substantially over the dataset's 36-year span (see
 the profiling notebook for specifics). Raw counts by airport, airline, or year mix true strike risk with
-air-traffic volume and reporting diligence — treat a raw ranking as a risk ranking with that caveat
-attached, not on its own.
+air-traffic volume and reporting diligence — a raw ranking is a ranking of *reports*, not of risk
+(session 7 demonstrates this with real traffic numbers).
 
 ## Getting the data
 
@@ -48,10 +48,13 @@ wild_strike_analysis/
 │       └── strikes_clean.pkl.gz    # cleaned dataset (pickle+gzip -- see Progress, session 4)
 └── notebooks/
     ├── 01_data_profiling.ipynb        # session 1: structural profile, grain audit, missingness over
-    │                                   # time (corrected in session 3), outlier pass
+    │                                   # time (corrected in sessions 3 and 7), outlier pass
     ├── 02_data_cleaning.ipynb         # sessions 2-4: documented fixes -> data/processed/strikes_clean.pkl.gz
     ├── 03_temporal_eda.ipynb          # session 5: seasonality and hour-of-day
-    └── 04_species_damage_eda.ipynb    # session 6: SPECIES categorization, size vs. damage, severity ranking
+    ├── 04_species_damage_eda.ipynb    # session 6: SPECIES categorization, size vs. damage, severity ranking
+    │                                   # (corrected in session 7)
+    └── 05_geographic_eda.ipynb        # session 7: geographic concentration, the volume confound,
+                                        # composition within states, a spatial view
 ```
 
 `src/`, a `sql/` folder, and a `reports/` folder are deliberately not created yet — each will be added in
@@ -112,16 +115,33 @@ reliable): one clear peak at 08:00 (9.46%), climbing from a pre-dawn trough at h
 gradually through the rest of the day. A `TIME`-vs-`TIME_OF_DAY` cross-check validates both fields against
 each other — clean agreement at midday/overnight, blurry (as expected) at dawn and dusk.
 
-**Session 6 (species and damage) — complete.** `notebooks/04_species_damage_eda.ipynb` first builds a
-4-bucket `SPECIES` categorization (species-identified 48.3%, unidentified 39.6%, genus/group-level 7.8%,
-non-avian 4.2%) via keyword and pattern heuristics checked against the actual data, with a small,
-quantified residual left honestly uncategorized rather than forced. Identification quality has mostly
-*improved* over time (unlike most other fields in this dataset) after a specific 1999-2005 worsening.
-**Size strongly predicts damage severity:** 3.4% (small) -> 16.6% (medium) -> 47.7% (large) damage rate. A
-species-level severity ranking (species-identified only, n>=30 strikes to avoid the single-strike
-"100%-damage-rate" trap) independently confirms this — large waterfowl and raptors (loons, geese,
-vultures, pelicans) dominate the top of the list. Non-avian wildlife concentrates heavily in ground-ops
-phases (62.0% vs. 34.5% for birds).
+**Session 6 (species and damage) — complete, corrected in session 7.**
+`notebooks/04_species_damage_eda.ipynb` builds a 4-bucket `SPECIES` categorization (species-identified
+48.3%, unidentified 39.6%, genus/group-level 7.8%, non-avian 4.3%). Non-birds are identified by the FAA's own
+species codes (a first version used keyword heuristics and missed 24 values, found in session 7), group
+names by pattern rules plus an explicit list, and the remaining default bucket was read through in full.
+Identification quality has mostly *improved* over time (unlike most other fields in this dataset), after an
+abrupt one-year worsening in 1999 and with an unexplained dip in 2025. **Size strongly predicts damage
+severity:** among birds, 3.5% (small) -> 16.6% (medium) -> 47.8% (large) damage rate. (`SIZE` is also filled in
+for non-bird animals, which the first version of this analysis counted as "bird size"; session 7 caught
+that.) A species-level severity ranking (species-identified only, n>=30 strikes to avoid the single-strike
+"100%-damage-rate" trap) independently confirms this — large waterfowl and raptors (loons, geese, vultures,
+pelicans) dominate the top of the list. Non-avian wildlife concentrates heavily in ground-ops phases (62.1%
+vs. 34.5% for birds).
 
-**Next:** geographic concentration — airport- and state-level patterns, applying the same raw-count-vs-rate
-discipline used throughout this project for time and species.
+**Session 7 (geographic concentration) — complete.** `notebooks/05_geographic_eda.ipynb` ranks states and
+airports by *reported* strikes and says plainly that this is not a risk ranking: the dataset has no flight
+counts to divide by. It then makes the point concrete with FAA Terminal Area Forecast operations data for
+four airports: Chicago O'Hare has more reports than Detroit in every fiscal year FY2022-FY2025, yet Detroit's
+per-operation rate is 1.4-1.9 times O'Hare's. A composition comparison that sidesteps volume (large-bird
+share, non-bird share, damage share within each state, 2013-2024) finds differences far beyond sampling
+noise, but they are entangled with single-airport dominance (a state is often mostly one airport) and with
+how reports get filed, so the dataset can't say whether they reflect wildlife, aircraft or reporting.
+`LATITUDE`/`LONGITUDE` turn out to be airport locations, not strike locations (2,765 coordinate pairs for
+2,767 airports), so a map can show where airports with reports are but not where strikes happened. Joining
+FAA operations data for genuine per-operation rates is scoped as future work, not attempted. Session 7 also
+corrected earlier work: notebook 01 claimed `UNKNOWN` airports fully explain a missing `STATE` (83 rows say
+otherwise), and notebook 04 had the `SIZE` and non-bird issues described above.
+
+**Next:** the project's remaining phases — SQL analysis, validation of the strongest findings, and the
+written report.
